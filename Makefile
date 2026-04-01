@@ -1,5 +1,4 @@
-main: main.c
-	gcc main.c -Wall -g -I -L -lraylib -o main
+default: main.h main.c
+	gcc main.c -O3 -Wall -lraylib -o main
 clean:
 	rm main
-

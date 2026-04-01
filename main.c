@@ -5,81 +5,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <rlgl.h>
+#include <string.h>
+#include <limits.h>
+#include "main.h"
+/////
+static int SCREENW; //These contain absolue maxes for W and H
+static int SCREENH;
 
-
-#define MAXBOIDS 8192	// Max Amount of Boids
-#define SCREENW 1792	// Screen Width
-#define SCREENH 1120	// Screen Height
-#define SIZE 2			// Size of Boid
-
-#define SEPARATION 0.00005
-#define COHESION 0.2
-#define ALIGNMENT 0.1
-#define RESOLVE 0.101
-#define TARGETSPEED 6
-#define RANGE 200
-
-#define BOID_INTERFACE 1 //1 for display output, 0 otherwise
-
-#define NUMBUCKETS 256 //must be a power of 4
-
-//int SCREENW;
-//int SCREENH;
-
-///////////////////////////////////////////////////////////////////////////////
-// This is the BOID type object; one contiguous word in memory for ease of 
-// access by the compiler. 
-// Contents:
-//	x: The x position of the boid. Allocated 16 bits by the bit field, this
-//		field contains 11 bits of float above the decimal and 5 bits of float
-//		after the decimal. Value is unsigned since the window's range is 
-//		strictly positive.
-//	y: The y position of the boid. Allocated 16 bits by the bit field, this     
-//      field contains 11 bits of float above the decimal and 5 bits of float   
-//      after the decimal. Value is unsigned since the window's range is 
-//		strictly positive.
-//	xv: The x velocity of the boid. Allocated 16 bits by the bit field, this 
-//		field contains 8 bits of float above th decimal and 8 bits of float 
-//		after the decimal. Value is signed.
-//  yv: The y velocity of the boid. Allocated 16 bits by the bit field, this    
-//      field contains 8 bits of float above th decimal and 8 bits of float     
-//      after the decimal. Value is signed. 
-//
-// Total space occupied: 8 bytes(1 word)             
-///////////////////////////////////////////////////////////////////////////////
-typedef struct {
-	// a uint64_t is an unsigned 64 bit integer(no dexplicit decimals)
-	uint64_t x : 16; //bit-field initialization container_type : width
-	uint64_t y : 16;
-
-	int64_t xv : 16;
-	int64_t yv : 16;
-} Boid;
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Node object for Linked List data structure
-// Contents:
-//	data: a pointer to the boid that this node contains
-//	nect: a pointer to the next node in the list
-///////////////////////////////////////////////////////////////////////////////
-typedef struct Node{
-	Boid * data; // A pointer to a boid in the huge array
-	struct Node * next; // A pointer to the next object in linked list
-} Node;
-
-
-///////////////////////////////////////////////////////////////////////////////
-// An initializer method for the boids
-// INPUT:
-//	a pointer to the boid to be initialized
-// OUTPUT
-//	None
-///////////////////////////////////////////////////////////////////////////////
 void init_boid(Boid * ptr) {
 	// Set a random initial x and y coordinate position
-	ptr -> x = (rand() % SCREENW) << 5; //bit shift left for precision
-	ptr -> y = (rand() % SCREENH) << 5;
+	ptr -> x = ((float)rand() / (float)RAND_MAX) * SCREENW; // << 5; //bit shift left for precision
+	ptr -> y = ((float)rand() / (float)RAND_MAX) * SCREENH; // << 5;
 	return;
 }
 
@@ -91,22 +27,24 @@ void init_boid(Boid * ptr) {
 // OUTPUT:
 //	None
 ///////////////////////////////////////////////////////////////////////////////
-//void update_boid(Boid * ptr, Boid * arr) {
-// Head is the first node in the bucket ptr is located in
-void update_boid(Boid * ptr, Node * head) {
-	/*
-	 - Extract float values. Dividing by 2^(precision amount) is the same
-	as shifting the decimal point
-	 - Multiplying by a small decimal in lines 37-40: Compiler is not allowed
-	to optimize float division(iterative guess and check algorithm ~O(logn)),
-	thus we must do it ourselves
-	*/
 
-	float x = (float)(ptr -> x) * 0.03125f; // val * 1/2^5
-	float y = (float)(ptr -> y) * 0.03125f;
-	float xv = (float)(ptr -> xv) * 0.00390625f; // val * 1/2^8
-	float yv = (float)(ptr -> yv) * 0.00390625f;
+///**
+void update_boid(Boid * ptr, Bucket * buckets, int b) {
+//**/
+/**
+void update_boid(Boid * source, Boid * start, int count) {
+**/
 	
+
+	// Capture start of bucket this boid exists in:
+	Boid * arr = buckets[b].boids;
+	int limit = buckets[b].count;
+	
+
+	float x = ptr -> x;
+	float y = ptr -> y; 
+	float xv = ptr -> xv; 
+	float yv = ptr -> yv;
 	float otherx;
 	float othery;
 	float otherxv;
@@ -123,25 +61,19 @@ void update_boid(Boid * ptr, Node * head) {
 	Vector2 sum_vel = vel;
 	Vector2 other_pos;
 	Vector2 other_vel;
-	/**	
-	for (int i = 0; i < MAXBOIDS; i++) {
+
+	for (int i = 0; i < limit; i++) {
+		
 		if (&arr[i] != ptr) { //Ensure a Boid does not check itself
-			otherx = (float)(arr[i].x) * 0.03125f;
-			othery = (float)(arr[i].y) * 0.03125f;
-			otherxv = (float)(arr[i].xv) * 0.00390625;
-			otheryv = (float)(arr[i].yv) * 0.00390625;
+			otherx = arr[i].x;
+			othery = arr[i].y;
+			otherxv = arr[i].xv;
+			otheryv = arr[i].yv;
 			other_pos = (Vector2){ otherx, othery };
 			other_vel = (Vector2){ otherxv, otheryv };
-	**/
 	
-	while (head != NULL) {
-		if (head -> data != ptr) {
-			otherx = (float)(head -> data -> x) * 0.03125f;
-			othery = (float)(head -> data -> y) * 0.03125f;
-			otherxv = (float)(head -> data -> xv) * 0.00390625;
-			otheryv = (float)(head -> data -> yv) * 0.00390625;
-			other_pos = (Vector2){ otherx, othery };
-			other_vel = (Vector2){ otherxv, otheryv };
+	
+
 	
 			distance = Vector2Subtract(other_pos, pos);
 			mag_dist = Vector2Length(distance);
@@ -153,25 +85,13 @@ void update_boid(Boid * ptr, Node * head) {
 
 				// Separation Inverse
 			
-				// If the distance is not acceptable, do not calculate for sep
+				// If the distance is not acceptable, do not calculate for sep - this check can be removed since mag dist is offset from 0, and max distance is determined by spatial hashing
 				if (mag_dist < 90.0f && mag_dist > 0.0f) {
 					sep_force = (10.0f / (0.01f * (mag_dist + 10))) - 10;
 					vel = Vector2Add(vel, Vector2Scale(distance, (float)(sep_force * -SEPARATION * SIZE)));
 				}
-			
-				// Separation Linear
-				/**
-				if (mag_dist < 0.0f) {
-					mag_dist = 1.0f;
-				}
-				if (mag_dist < 100.0f && mag_dist > 0.0f) {
-					sep_force = (-mag_dist + 100);
-					vel = Vector2Add(vel, Vector2Scale(distance, (float)(sep_force * -SEPARATION)));
-				}
-				**/
 			}
 		}
-		head = head -> next;
 	}
 	
 	// Cohesion
@@ -205,35 +125,24 @@ void update_boid(Boid * ptr, Node * head) {
 	// Move the boid	
 	pos = Vector2Add(pos, vel);
 
-	/**
-	float theta = RAD2DEG * (acos(vel.x / (Vector2Length(vel) + 0.1f))); //float div
-	if (vel.y < 0) 
-		theta = 360 - theta;
-	**/
-
 	//Infinite borders
-	if (pos.x > (float)SCREENW) {
+	if (pos.x >= (float)GetScreenWidth()) {
 		pos.x = 1.0f;
 	}
 	if (pos.x <= 0.0f) {
-		pos.x = (float)(SCREENW - 1);
+		pos.x = (float)(GetScreenWidth() - 1);
 	}
-	if (pos.y > (float)SCREENH) {
+	if (pos.y >= (float)GetScreenHeight()) {
 		pos.y = 1.0f;
 	}
 	if (pos.y <= 0.0f) {
-		pos.y = (float)(SCREENH - 1);
+		pos.y = (float)(GetScreenHeight() - 1);
 	}
-		
-	//DrawPoly(pos, 3, SIZE, theta, WHITE);
-	//printf("theta: %f\n", theta);
 	
-	// Repack updated data
-	ptr -> x = (uint64_t)(pos.x * 32.0f);
-	ptr -> y = (uint64_t)(pos.y * 32.0f);
-	ptr -> xv = (int64_t)(vel.x * 256.0f);
-	ptr -> yv = (int64_t)(vel.y * 256.0f);
-
+	ptr -> x = pos.x;
+	ptr -> y = pos.y;
+	ptr -> xv = vel.x;
+	ptr -> yv = vel.y;
 	
 	return;	
 }
@@ -267,10 +176,10 @@ void print_boid_interface(Boid * a, int * lines) {
 		
 	for (int i = 0; i < *lines; i++) {
 			
-		x = (float)(a[i].x) * 0.03125f; // val * 1/2^5
-		y = (float)(a[i].y) * 0.03125f;
-		xv = (float)(a[i].xv) * 0.00390625f; // val * 1/2^8
-		yv = (float)(a[i].yv) * 0.00390625f;
+		x = a[i].x; // * 0.03125f; // val * 1/2^5
+		y = a[i].y; // * 0.03125f;
+		xv = a[i].xv; // * 0.00390625f; // val * 1/2^8
+		yv = a[i].yv; // * 0.00390625f;
 		
 			
 		fprintf(stdout, "\r\033[K%d\t\t\t\t\t%4.2f\t\t%4.2f\t\t%3.3f\t\t%3.3f\n", i+1, x, y, xv, yv); 
@@ -294,14 +203,23 @@ void draw(Boid * ptr) {
 	Vector2 vel;
 	Vector2 pos;
 	
-	x = (float)(ptr -> x) * 0.03125f; // val * 1/2^5
-	y = (float)(ptr -> y) * 0.03125f;
-	xv = (float)(ptr -> xv) * 0.00390625f; // val * 1/2^8
-	yv = (float)(ptr -> yv) * 0.00390625f;
+	x = (float)(ptr -> x);//  * 0.03125f; // val * 1/2^5
+	y = (float)(ptr -> y); // * 0.03125f;
+	xv = (float)(ptr -> xv); // * 0.00390625f; // val * 1/2^8
+	yv = (float)(ptr -> yv); // * 0.00390625f;
 
 	pos = (Vector2) { x, y };
 	vel = (Vector2) { xv, yv };
-		
+
+	
+	//Vec
+
+	//DrawTriangle();
+
+
+
+
+
 	theta = RAD2DEG * (acos(vel.x / (Vector2Length(vel) + 0.1f))); //float div
 	DrawPoly(pos, 3, SIZE, theta, WHITE); 		
 
@@ -323,152 +241,224 @@ void draw(Boid * ptr) {
 ///////////////////////////////////////////////////////////////////////////////
 int main() 
 {
-
-	//SCREENW = GetScreenWidth();
-	//`SCREENH	= GetScreenHeight();
-	// Allocate Memory
-	// a is an array of boids, not pointers to boids
-	Boid * a = calloc(MAXBOIDS, sizeof(Boid));
-	if (a == NULL) {
-		fprintf(stderr, "calloc failed\n");
-		exit(1);
-	}
 	
+	double time;
+	// Allocate Memory for boids and counting sort
+	// a boid array located on the stack called boids - could be 
+	// Boid ** boids = (boid*) malloc(2 * sizeof(boid*));
+	Boid *boids[2];
+	// First row to store Boids
+	boids[0] = calloc(MAX_NUM_BOIDS, sizeof(Boid));
+	// Second row to store Boids
+	boids[1] = calloc(MAX_NUM_BOIDS, sizeof(Boid));
+	
+	// An array of helper data structures(BucketIndex), which are to contain 
+	// two pieces of data for each boid in the previous boid row
+	BucketIndex * bucket_indices = calloc(MAX_NUM_BOIDS, sizeof(BucketIndex));
+
+	// An array of bucket counters size = numBuckets. Just an array with a slot
+	// for each bucket which contains the number of boids in that bucket
+	BucketCounter * bucket_counters = calloc(NUM_BUCKETS, sizeof(BucketCounter));
+
+	
+	// An array to store the contents of each buckets. each index of this array
+	// contains a bucket object with an array of boids in that bucket and a
+	// count of the number iof boids in that bucket
+	Bucket * buckets = calloc(MAX_NUM_BOIDS, sizeof(Bucket));
+
+	//WHy are we allocating MAx NUM Boids buckets?
+	//Bucket * buckets = calloc(NUM_BUCKETS, sizeof(Bucket));
+
+
+	// Configure Window
+	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+	InitWindow(500, 500, "Boids");
+	MaximizeWindow();
+	SCREENW = GetScreenWidth();
+	SCREENH = GetScreenHeight();
+	SetWindowMaxSize(SCREENW, SCREENH);
+	SetWindowSize(500, 500);
+
 	// Initialize boids
 	for (int i = 0; i < MAXBOIDS; i++) {
-		// Pass in the ADDRESS of the Boid at a[i]
-		init_boid(&a[i]);
+		// Pass in the ADDRESS of the Boid at a[i] so that it can be modified
+		// Always initialize for row 0
+		init_boid(&boids[0][i]);
 	}
-
-//=============================================================================
-	// Node POOL
-	// Goal is to minimize allocations during the frames, instead perform them 
-	// beforehand
-	// Instantiate a large malloc containing all the nodes that will be used
-	// in a frame
-	Node *NODEPOOL = malloc(MAXBOIDS * sizeof(Node));
-	if (NODEPOOL == NULL) {
-		fprintf(stderr, "NodePool malloc failed\n");
-		exit(1);
-	}
-	// Keep track of a pointer which stores the next available node to be used
-	int pool_index = 0;
-
-	// Instead of mallocing later, just grab a node from this pool
-
-//=============================================================================
-	// Linked List	
-	// Initialize array(a pointer) to pointers to nodes
-	Node **buckets = malloc(NUMBUCKETS * sizeof(Node *));
-	if (buckets == NULL) {
-		fprintf(stderr, "Bucket malloc failed\n");
-		exit(1);
-	}
-	for (int i = 0; i < NUMBUCKETS; i++) {
-		buckets[i] = NULL; //go through and initialize all the buckets to NULL
-	}
-//=============================================================================
-	
-
-	InitWindow(SCREENW, SCREENH, "Boids");
-	MaximizeWindow();
-	SetTargetFPS(60); //Caps fps at 60
+	// More Configuration setup
+	SetTargetFPS(90); //Caps fps at 60
 	int lines = fmin((double)25, (double)MAXBOIDS);
 	
+
+	int accum = 0;
+	Boid *src_boids; //ptr to the start of the previous frame's boids
+	Boid *dest_boids; //ptr to the start of the current frame's boids
+	
+
+
 	//Game Loop
 	while(!WindowShouldClose())
 	{
-		// Place Boids in Buckets
-		// "node" is a pointer to a node
-		Node * node = NULL;
 		
-		int scalefactor = sqrt(NUMBUCKETS); //for 16 buckets this is 4
-		// Place the boids in their buckets
+		time = GetTime();
+
+
+
+		// Accumulator. flips the start index for the source and the every update
+		
+		src_boids = boids[accum & 1]; //if accum = 0, src = 0, if accum = 1, src = 1
+		dest_boids = boids[((accum + 1) & 1)];
+		accum++; 
+		//printf("Accum: %i\n", accum);
+
+		/**
+		if (accum) {
+			src_boids = boids[0]; //if accum = 0, src = 0, if accum = 1, src = 1
+			dest_boids = boids[1];
+			accum = 0;
+		} else {
+			src_boids = boids[1]; //if accum = 0, src = 0, if accum = 1, src = 1
+			dest_boids = boids[0];
+			accum = 1;
+		}
+		**/
+
+		// Reset bucket count and bucket frame every frame
+		memset(bucket_indices, 0, sizeof(BucketIndex) * MAXBOIDS);
+		memset(bucket_counters, 0, sizeof(BucketCounter) * NUM_BUCKETS);
+		
+
+		int scalefactor = sqrt(NUM_BUCKETS); //for 16 buckets this is 4
+		int bucket; //stores current bucket
+/////////////////////////////////Count/////////////////////////////////////////
+		
 		for (int i = 0; i < MAXBOIDS; i++) {
 
-			// Get position data
-			float x = (float)(a[i].x) * 0.03125f; // val * 1/2^5
-			float y = (float)(a[i].y) * 0.03125f;
+			// This chunk of code determines the bucket of a boid
+			float x = src_boids[i].x;
+			float y = src_boids[i].y;
+			int bucketx = (int)floorf((x / SCREENW) * scalefactor);
+			int buckety = (int)floorf((y / SCREENH) * scalefactor);
+			bucket = bucketx + (buckety * scalefactor);
 
-			if (x > 1791.0f) x = 1791.0f;
-				
-			if (y > 1119) y = 1119.0f;
+			// The alternate method would be to store Boid position from
+			// 1 to UINT_MAX               1 - 4bi;
+			//[0000] 0000 0000 0000 0000 0000 0000 0000 min
+			//[1111] 1111 1111 1111 1111 1111 1111 1111 max
+			// if you want 16 buckets, all but last 4 bits are masked
+			// for placing if on screen, this wil be more challanging	
+			// 
+			// This has to do with pan and zoom functionality
 
-
-
-			// Floorf is used for float flooring for 0-based buckets
-			int xbucket = (int)floorf((x / SCREENW) * scalefactor); 
-			int ybucket = (int)floorf((y / SCREENH) * scalefactor);
-
-
-
-				
-			// Compute bucket index labeled "bucket"
-			int bucket = xbucket + (ybucket * scalefactor);
-			
-			if (bucket < 0 || bucket >= NUMBUCKETS) {
-				fprintf(stderr, "Invalid Bucket\n");
-				exit(1);
-			}
-			//Node Pool Implementation
-			node = &(NODEPOOL[pool_index]); //use address operator to derive a ptr
-			pool_index += 1; //Increment Pool index
-
-			//node's data field asks for a pointer to a boid
-			node -> data = &a[i];
-
-			// buckets is an array of Node pointers. Set this node's next
-			// pointer to the current head of one of the buckets, a node ptr
-			//printf("Bucket#: %d\n", bucket);
-			node -> next = buckets[bucket];
-
-			// Replace that bucket's head with the latest boid added to the
-			// bucket. if this is the first Node placed in the bucket the 
-			// current head will be	NULL, which is ideal. The last Node in the 
-			// the bucket will have a NULL next pointer
-			buckets[bucket] = node;
+			// bucket indices is a parallel array to boids. It contains the bucket
+			// that boid is going to and that boids index within bucket
+			bucket_indices[i].bucket = bucket;
+			// We set the index equal to the current count in that bucket
+			bucket_indices[i].index_within_bucket = bucket_counters[bucket];
+			bucket_counters[bucket]++;
 		}
+
+
+//////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\////////////////ALLOC////////////////////////////////////////
+		
+		// Prefix sum using the starting index
+		uint32_t prefix_sum = 0;
+		for (int i = 0; i < NUM_BUCKETS; i++) {
+			buckets[i].boids = dest_boids + prefix_sum; //initiall we are 
+			//setting the boid array pointer for the ith bucket equal to the 
+			// current pointer to dest + a running tally. This mean setting the
+			// start of boids to the start of dest to begin with
+	
+			// bucket_counters has the number of boids per bucket in each index
+			// corresponding to a buckat
+			buckets[i].count = bucket_counters[i];
+
+
+			// Finally update the running total variable to place the start of boids
+			//array for the next buckets[i] correctly
+			prefix_sum += bucket_counters[i];
+		}
+
+///////////////////////////////////FILL///////////////////////////////////////
+		
+		for (int i = 0; i < MAXBOIDS; i++) {
+			//bucket_indices[i].bucket // .bucket contains the first boids bucket number
+			//buckets[/**current boid bucket**/] // = a bucket with a boids array 
+			// ptr and a sizegt
+			//buckets[bucket_indices[i].bucket].boids // references the start of the boid list
+			// the boid to be grabbed is 
+			//[bucket_indices[i].index_within_bucket]
+			buckets[bucket_indices[i].bucket]
+				.boids[bucket_indices[i].index_within_bucket]
+				 = src_boids[i];
+		}
+
+
+		time = GetTime() - time;
+
+		// Text Display, use {} to contain any local variables
+		{
+		char text[1000];  
+		snprintf(text, 128, "Grid Build: %li(ms)", (long)(time * 1000000));
+		DrawText(text, 10, 30, 20.0, GREEN);
+		}
+
+
+		time = GetTime();
+		for (int i = 0; i < MAXBOIDS; i++) {
+			//update_boid(&boids[0][i], &boids[0][0]);
+			//For now, pass in the current boid and its bucket
+			// When considering position, willl also be able to look at the 
+			// bits to potentially select neighboring buckets
+			// buckets(256)                  precisiton
+			//                  [     right     ][      left     ]
+			// xbucket: [1111]  0000 0000 0000 0000 0000 0000 0000 
+
+
+			//buckets[bucket_indices[i].bucket].boids recovers a pointer to 
+			// the first boid in a bucket
+			update_boid(&dest_boids[i], buckets, bucket_indices[i].bucket);
+
+			//update_boid(&dest_boids[i], dest_boids + start, );
+		}
+
+		time = GetTime() - time;
+
+		// Text Display, use {} to contain any local variables
+		{
+		char text[1000];  
+		snprintf(text, 128, "Update: %li(ms)", (long)(time * 1000000));
+		DrawText(text, 10, 50, 20.0, GREEN);
+		}
+	
+
 
 		//  Terminal Output
 		if (BOID_INTERFACE)
-			print_boid_interface(a, &lines);
+			print_boid_interface(boids[0], &lines);
 
-		for (int i = 0; i < NUMBUCKETS; i++) {
-			Node * head = buckets[i];
-			Node * current = head;
-			while (current != NULL) {
-				update_boid(current -> data, head);
-				current = current -> next;
-			}
-		}
-
+		time = GetTime();
 		BeginDrawing();
 
+		// Clearing background before drawing prevents buffer fragmentation
+		ClearBackground(BLACK);
 		// New Draw: 
 		for(int i = 0; i < MAXBOIDS; i++) {
-			draw(&a[i]);
-
-			if (i > 0 && i % 2000 == 0) {
-				rlDrawRenderBatchActive();
-			}
+			draw(dest_boids + i);
 		}
 
-
-		/**							
-		for (int i = 0; i < MAXBOIDS; i++) {
-			update_boid(&a[i], a);
-		}
-		**/
-		ClearBackground(BLACK);
+		DrawFPS(10, 10);
 		EndDrawing();
 		
+		time = GetTime() - time;
 
-
-		/* Frame Clean Up Steps */
-		for (int i = 0; i < NUMBUCKETS; i++) {
-			buckets[i] = NULL;
+		// Text Display, use {} to contain any local variables
+		{
+		char text[1000];  
+		snprintf(text, 128, "Draw: %li(ms)", (long)(time * 1000000));
+		DrawText(text, 10, 70, 20.0, GREEN);
 		}
-		pool_index = 0;
+
 	}
 
 
@@ -480,9 +470,14 @@ int main()
 	}
 
 	CloseWindow();
-	free(NODEPOOL);
+	free(boids[0]);
+	free(boids[1]);
+	free(bucket_indices);
+	free(bucket_counters);
 	free(buckets);
-	free(a);
+
+
+
 	return 0;
 }
 
