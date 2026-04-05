@@ -1,14 +1,7 @@
 
 #define MAXBOIDS 50000	// Max Amount of Boids
 #define MAX_NUM_BOIDS 1000000 // Max possible amount
-#define SIZE 0.5			// Size of Boid
-
-#define SEPARATION 0.000075
-#define COHESION 0.5
-#define ALIGNMENT 0.0001
-#define RESOLVE 0.101 //0.101
-#define TARGETSPEED 4
-#define RANGE 200
+#define SIZE 100		// Size of Boid
 
 #define BOID_INTERFACE 0 //1 for display output, 0 otherwise
 
@@ -17,17 +10,23 @@
 
 
 typedef struct {
-	float x; 
-	float y;
+	// float x;
+	// float y;
 
+	uint16_t x; 
+	uint16_t y;
+	
 	float xv;
 	float yv;
+	
+	uint16_t padding;
 } Boid;
 
 
 // Stores two integers which are used to sort boids properly from previous 
 // frame to this frame
 typedef struct {
+	int n[4];
 	int bucket;
 	int index_within_bucket;
 } BucketIndex;
